@@ -2,6 +2,7 @@ package com.fetch.rewards.FetchRewardsApp;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
@@ -128,6 +129,25 @@ public class FetchRewardsService {
     		return Response.ok(jsonTransformer.toJson(new SingleValueWrapper(wasPaymentApplied))).build();
     	} catch (Exception e) {
     		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(makeCatchExceptionOutput(e))).build();
+    	}
+    }
+    
+    @POST
+    @Path("/deduction")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response applyDeduction(
+    		@FormParam("userAccountName") String userAccountName,
+    		@FormParam("amontApplied") int amountApplied) {
+    	try {
+    		if (StringUtils.isBlank(userAccountName)) {
+    			throw new IllegalArgumentException("User Account was not specified.");
+    		}
+    		List<PaymentTransaction> payments = PaymentLogic.getInstance().applyDeductionToUserAccount(amountApplied, userAccountName);
+    		
+    		return Response.ok(jsonTransformer.toJson(new ListWrapper(payments))).build();
+    	} catch (Exception exception) {
+    		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(makeCatchExceptionOutput(exception))).build();
     	}
     }
     

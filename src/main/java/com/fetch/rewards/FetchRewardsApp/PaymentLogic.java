@@ -2,7 +2,9 @@ package com.fetch.rewards.FetchRewardsApp;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -101,6 +103,83 @@ public class PaymentLogic {
 		}
 		
 		return userAccount;
+	}
+	
+	public List<PaymentTransaction> applyDeductionToUserAccount(int amount, String userAccountName) {
+		if (amount <= 0) {
+			String message = "Amount given was negative for a deduction. Amount: " + amount;
+			logger.info(message);
+			throw new IllegalArgumentException(message);
+		}
+		
+		UserAccount userAccount = getValidUserAccount(userAccountName);
+		if (amount > userAccount.getUserAccountBalance()) {
+			String message = "The deduction was over the user account limit for user: " + userAccountName;
+			logger.info(message);
+			throw new IllegalArgumentException(message);
+		}
+		// 1. get all payment transactions and sort the list using the date comparator
+		// 2. Loop through all payments
+		// 		a. Apply deduction amount until it is 0
+		//		b. Keep track of which payments are being applied to which accounts
+		//      c. Keep track of which payers the deduction is being applied to (return value)
+		
+		List<PaymentTransaction> allPaymentsToUser = userAccount.getAllPaymentTransactionsSortedByDate();
+		Map<String, List<PaymentTransaction>> paymentsAppliedToDeduction = new HashMap<>();
+		int amountToRemove = amount;
+		int index = 0;
+		PaymentTransaction lastTransaction = null;
+		while (amountToRemove > 0) {
+			PaymentTransaction currentTransaction = allPaymentsToUser.get(index);
+			if (currentTransaction.getAmount() <= amountToRemove) {
+				amountToRemove -= currentTransaction.getAmount();
+				addPaymentTransactionToBeRemoved(currentTransaction, paymentsAppliedToDeduction);
+			} else {
+				lastTransaction = new PaymentTransaction(currentTransaction.getPayerName(), amountToRemove, currentTransaction.getPaymentDate());
+				amountToRemove -= currentTransaction.getAmount();
+				currentTransaction.setAmount(Math.negateExact(amountToRemove));
+			}
+			
+			index += 1;
+		}
+		
+		for (Map.Entry<String, List<PaymentTransaction>> entry : paymentsAppliedToDeduction.entrySet()) {
+			userAccount.removePaymentTransactionsByPayerName(entry.getKey(), entry.getValue());
+		}
+		
+		// The last transaction is a partial transaction that could remove all in the account but likely will not
+		addPaymentTransactionToBeRemoved(lastTransaction, paymentsAppliedToDeduction);
+		
+		return createListForAppliedDeduction(paymentsAppliedToDeduction);
+	}
+	
+	private void addPaymentTransactionToBeRemoved(PaymentTransaction transaction, Map<String, List<PaymentTransaction>> paymentTransactionsToRemove) {
+		List<PaymentTransaction> transactions = paymentTransactionsToRemove.get(transaction.getPayerName());
+		if (CollectionUtils.isEmpty(transactions)) {
+			List<PaymentTransaction> newList = new ArrayList<>();
+			newList.add(transaction);
+			paymentTransactionsToRemove.put(transaction.getPayerName(), newList);
+		} else {
+			transactions.add(transaction);
+		}
+	}
+	
+	private List<PaymentTransaction> createListForAppliedDeduction(Map<String, List<PaymentTransaction>> paymentsRemoved) {
+		List<PaymentTransaction> paymentsApplied = new ArrayList<>();
+		for (Map.Entry<String, List<PaymentTransaction>> entry : paymentsRemoved.entrySet()) {
+			PaymentTransaction paymentTransaction = new PaymentTransaction();
+			paymentTransaction.setPayerName(entry.getKey());
+			paymentTransaction.setPaymentDate(new Date());
+			int total = 0;
+			for (PaymentTransaction transaction : entry.getValue()) {
+				total += transaction.getAmount();
+			}
+			paymentTransaction.setAmount(Math.negateExact(total));
+			paymentsApplied.add(paymentTransaction);
+		}
+		
+		
+		return paymentsApplied;
 	}
 	
 	public UserAccount getFullUserAccount(String userAccountName) {
