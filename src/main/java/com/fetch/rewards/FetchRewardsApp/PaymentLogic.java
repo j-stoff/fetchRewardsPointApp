@@ -103,6 +103,11 @@ public class PaymentLogic {
 		return userAccount;
 	}
 	
+	public UserAccount getFullUserAccount(String userAccountName) {
+		UserAccount userAccount = getValidUserAccount(userAccountName);
+		return userAccount;
+	}
+	
 	private UserAccount getValidUserAccount(String userAccountName) {
 		UserAccount userAccount = UserAccountDAO.getInstance().getUserAccountByName(userAccountName);
 		if (userAccount == null) {
