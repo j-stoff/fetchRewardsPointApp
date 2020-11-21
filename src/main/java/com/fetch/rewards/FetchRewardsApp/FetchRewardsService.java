@@ -17,9 +17,10 @@ public class FetchRewardsService {
      *
      * @return String that will be returned as a text/plain response.
      */
+	@Path("/echo")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public String getIt() {
-        return "Got it!";
+    public String echo() {
+        return "Echo";
     }
 }
