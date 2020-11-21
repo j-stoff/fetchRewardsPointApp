@@ -34,6 +34,7 @@ public class FetchRewardsService {
     @GET
     @Produces(MediaType.TEXT_PLAIN)
     public String echo() {
+		logger.info("Echoing message back.");
         return "Echo";
     }
 	

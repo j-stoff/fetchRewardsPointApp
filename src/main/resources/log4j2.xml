@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+    <Properties>
+        <Property name="logPath">Path to your project</Property>
+    </Properties>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+        </Console>
+      <RollingFile name="FetchLog" fileName="${logPath}/logs/fetch.log" 
+      	filePattern="${logPath}/logs/$${date:yyyy-MM}/fetch_log-%d{MM-dd-yyyy}-%i.log">
+        <PatternLayout>
+            <Pattern>%d [%t] %p %c - %m%n</Pattern>
+        </PatternLayout>
+        <Policies>
+            <OnStartupTriggeringPolicy />
+            <TimeBasedTriggeringPolicy />
+            <SizeBasedTriggeringPolicy size="50 MB" />
+        </Policies>
+        <DefaultRolloverStrategy max="5" />
+    </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Root level="debug">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="FetchLog"/>
+        </Root>
+    </Loggers>
+</Configuration>
