@@ -1,5 +1,8 @@
 package com.fetch.rewards.FetchRewardsApp;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
@@ -10,6 +13,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -51,5 +55,71 @@ public class FetchRewardsService {
     	} catch (Exception e) {
     		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(e)).build();
     	}
+    }
+    
+    @POST
+    @Path("/payTransaction/today")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response addPayerTransactionToday(
+    		@FormParam("userAccountName") String userAccountName,
+    		@FormParam("payerName") String payerName,
+    		@FormParam("amontApplied") int amountApplied) {
+    	
+    	try {
+    		if (StringUtils.isBlank(payerName)) {
+    			throw new IllegalArgumentException("Payer name was not provided.");
+    		}
+    		UserAccount userAccount = PaymentLogic.getInstance().applyPaymentTransactionToUserAccount(payerName, amountApplied, new Date(), userAccountName);
+    		Boolean wasPaymentApplied = userAccount != null;
+    		
+    		return Response.ok(jsonTransformer.toJson(new SingleValueWrapper(wasPaymentApplied))).build();
+    	} catch (Exception e) {
+    		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(makeCatchExceptionOutput(e))).build();
+    	}
+    }
+    
+    @POST
+    @Path("/payTransaction")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response addPayerTransaction(
+    		@FormParam("userAccountName") String userAccountName,
+    		@FormParam("payerName") String payerName,
+    		@FormParam("amontApplied") int amountApplied,
+    		@FormParam("datePaid") String datePaid) {
+    	try {
+    		if (StringUtils.isBlank(userAccountName)) {
+    			throw new IllegalArgumentException("User Account was not specified.");
+    		}
+    		if (StringUtils.isBlank(payerName)) {
+    			throw new IllegalArgumentException("Payer name was not provided.");
+    		}
+    		if (StringUtils.isBlank(datePaid)) {
+    			throw new IllegalArgumentException("A date applied must be supplied");
+    		}
+    		SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+    		Date appliedDate = dateFormat.parse(datePaid);
+    		
+    		UserAccount userAccount = PaymentLogic.getInstance().applyPaymentTransactionToUserAccount(payerName, amountApplied, appliedDate, userAccountName);
+    		Boolean wasPaymentApplied = userAccount != null;
+    		
+    		return Response.ok(jsonTransformer.toJson(new SingleValueWrapper(wasPaymentApplied))).build();
+    	} catch (Exception e) {
+    		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(makeCatchExceptionOutput(e))).build();
+    	}
+    }
+    
+    /**
+     * Make an object that can be returned to the user without exposing too much of the application exception. Though it will return
+     * the actual cause of the error.
+     * @param exception the exception that occurred
+     * @return a FetchRewardsExceptionResponse object in to be build into JSON and sent to the caller.
+     */
+    private FetchRewardsExceptionResponse makeCatchExceptionOutput(Exception exception) {
+    	FetchRewardsExceptionResponse responseMessage = new FetchRewardsExceptionResponse();
+    	responseMessage.setExceptionMessage(exception.getMessage());
+    	responseMessage.setExceptionName(exception.getClass().getName());
+    	return responseMessage;
     }
 }
