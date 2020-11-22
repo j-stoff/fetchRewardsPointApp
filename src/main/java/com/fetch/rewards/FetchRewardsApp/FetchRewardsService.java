@@ -22,7 +22,7 @@ import org.apache.logging.log4j.Logger;
 import com.google.gson.Gson;
 
 /**
- * Root resource (exposed at "myresource" path)
+ * The Service class that handles the HTTP requests to the server. In this case, it handles all /fetchRewards/* requests.
  */
 @Path("/fetchRewards")
 public class FetchRewardsService {
@@ -44,6 +44,11 @@ public class FetchRewardsService {
         return "Echo";
     }
 	
+	/**
+	 * A service to create a new user account.
+	 * @param userAccountName the user account name to create.
+	 * @return json response of true if the account was created successfully, otherwise an error if account already exists.
+	 */
     @POST
     @Path("/userAccount/new")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -53,12 +58,17 @@ public class FetchRewardsService {
     		// Check if user exists, otherwise create a blank account.
     		boolean wasAccountCreated = PaymentLogic.getInstance().createNewUser(userAccountName);
     		
-    		return Response.ok(jsonTransformer.toJson(wasAccountCreated)).build();
+    		return Response.ok(jsonTransformer.toJson(new SingleValueWrapper(wasAccountCreated))).build();
     	} catch (Exception e) {
-    		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(e)).build();
+    		return Response.status(Status.BAD_REQUEST).entity(jsonTransformer.toJson(makeCatchExceptionOutput(e))).build();
     	}
     }
     
+    /**
+     * Get the details of a particular user account by name. Useful for determining the current status of an account.
+     * @param userAccountName the user account name to get.
+     * @return a summary of the user account that totals up the balance and payment transactions by payer name.
+     */
     @GET
     @Path("/userAccount")
     @Produces(MediaType.APPLICATION_JSON)
@@ -79,6 +89,13 @@ public class FetchRewardsService {
     	}
     }
     
+    /**
+     * Apply a payment transaction today. Uses the time of execution as the time the payment was applied.
+     * @param userAccountName the user account to apply the payment to.
+     * @param payerName the name of the payer.
+     * @param amountApplied the amount applied in the payment.
+     * @return json response of true if the payment was applied, or an error signifying what went wrong.
+     */
     @POST
     @Path("/payTransaction/today")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -101,6 +118,14 @@ public class FetchRewardsService {
     	}
     }
     
+    /**
+     * Apply a payment transaction. A date for the payment transaction must be specified.
+     * @param userAccountName the user account to apply the payment to.
+     * @param payerName the name of the payer.
+     * @param amountApplied the amount applied in the payment.
+     * @param datePaid the date this payment occurred.
+     * @return json response of true if the payment was applied, or an error signifying what went wrong. 
+     */
     @POST
     @Path("/payTransaction")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -132,6 +157,12 @@ public class FetchRewardsService {
     	}
     }
     
+    /**
+     * Apply a deduction to a user account.
+     * @param userAccountName The user account the deduction is applied to.
+     * @param amountApplied the amount to deduct from the user.
+     * @return a list of payers and amounts that were taken off because of the deduction, or an error signifying what went wrong.
+     */
     @POST
     @Path("/deduction")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)

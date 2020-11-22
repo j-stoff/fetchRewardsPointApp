@@ -11,11 +11,21 @@ public class PaymentTransactionComparator implements Comparator<PaymentTransacti
 	private PaymentTransactionComparator() {	
 	}
 	
-	
+	/**
+	 * Singleton reference method to get an instance of the class.
+	 * @return the single instance of this class.
+	 */
 	public static PaymentTransactionComparator getInstance() {
 		return instance;
 	}
-
+	
+	/**
+	 * Compare two payment transactions. Arbitrarily calls the first argument 'first' and second argument 'second'. 
+	 * If both are null, they are equal. Zero is returned.
+	 * If first is not null, but second is then first is greater. A positive result is returned.
+	 * If first is null, but second is not then second is greater. A negative result is returned.
+	 * If both are not null then a compareTo method is called using the built in Date comparison.
+	 */
 	@Override
 	public int compare(PaymentTransaction first, PaymentTransaction second) {
 		if (first == null) {

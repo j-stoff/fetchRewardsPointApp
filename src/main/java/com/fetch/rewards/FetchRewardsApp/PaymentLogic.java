@@ -13,7 +13,7 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * This class is meant to take in parameters from the Service Layer and do the necessary computations for applying payments
- * to User accounts via payer transactions
+ * to User accounts via payer transactions.
  * @author Jacob Stoffregen
  *
  */
@@ -37,6 +37,11 @@ public class PaymentLogic {
 		return singletonInstance;
 	}
 	
+	/**
+	 * Create a new user account. Throws a run time exception if the user account name already exists.
+	 * @param userName the user account name to create.
+	 * @return true if the account was created successfully.
+	 */
 	public boolean createNewUser(String userName) {
 		UserAccount userAccount = UserAccountDAO.getInstance().getUserAccountByName(userName);
 		if (userAccount != null) {
@@ -49,7 +54,15 @@ public class PaymentLogic {
 		return true;
 	}	
 	
-	
+	/**
+	 * Apply a payment to a User account. Throws if the payer name is not provided or if the date applied is null.
+	 * New Payer names to the account must have a greater than zero payment or it will be rejected.
+	 * @param payerName the name of the payer
+	 * @param amount the amount being paid
+	 * @param dateApplied the date the payment was applied.
+	 * @param userAccountName the user account this payment was toward.
+	 * @return the user account that had the payment applied.
+	 */
 	public UserAccount applyPaymentTransactionToUserAccount(String payerName, int amount, Date dateApplied, 
 			String userAccountName) {
 		UserAccount userAccount = getValidUserAccount(userAccountName);
@@ -66,7 +79,6 @@ public class PaymentLogic {
 		List<PaymentTransaction> transactionsForPayer = userAccount.getPaymentTransactionsByPayerName(payerName);
 		
 		if (CollectionUtils.isEmpty(transactionsForPayer)) {
-			// attempt to add
 			if (amount < 0) {
 				String message = "Attempting to add a new payer " + payerName + " to account " 
 						+ userAccount.getAccountName() + " with a negative amount " + amount;
@@ -76,35 +88,35 @@ public class PaymentLogic {
 			PaymentTransaction transaction = new PaymentTransaction(payerName, amount, dateApplied);
 			userAccount.addPaymentTransaction(payerName, transaction);
 		} else {
-			// add payment to payer
 			if (amount >= 0) {
-				// amount is positive
 				PaymentTransaction transaction = new PaymentTransaction(payerName, amount, dateApplied);
 				userAccount.addPaymentTransaction(payerName, transaction);
 				
 			} else {
-				// amount is negative, take away from the oldest transactions
-				// we are essentially not recording the negative transaction since it will take away from current payments
 				int amountToRemove = amount;
 				List<PaymentTransaction> transactionsToRemove = new ArrayList<>();
 				for (PaymentTransaction payment : transactionsForPayer) {
 					amountToRemove += payment.getAmount();
 					if (amountToRemove <= 0) {
-						// There is still move to remove, this entire transaction's amount has been used
 						transactionsToRemove.add(payment);
 					} else {
-						// we went over, the amountToRemove is the final balance of the last transaction
 						payment.setAmount(amountToRemove);
 					}
 				}
 				userAccount.removePaymentTransactionsByPayerName(payerName, transactionsToRemove);
-				
 			}
 		}
 		
 		return userAccount;
 	}
 	
+	/**
+	 * Apply a deduction to a user account. Requires that the amount of the deduction be lower or equal to the total
+	 * amount of funds available in the account.
+	 * @param amount amount to deduct
+	 * @param userAccountName the user account name.
+	 * @return a list of payers and the amount the deduction was applied to.
+	 */
 	public List<PaymentTransaction> applyDeductionToUserAccount(int amount, String userAccountName) {
 		if (amount <= 0) {
 			String message = "Amount given was negative for a deduction. Amount: " + amount;
@@ -118,11 +130,6 @@ public class PaymentLogic {
 			logger.info(message);
 			throw new IllegalArgumentException(message);
 		}
-		// 1. get all payment transactions and sort the list using the date comparator
-		// 2. Loop through all payments
-		// 		a. Apply deduction amount until it is 0
-		//		b. Keep track of which payments are being applied to which accounts
-		//      c. Keep track of which payers the deduction is being applied to (return value)
 		
 		List<PaymentTransaction> allPaymentsToUser = userAccount.getAllPaymentTransactionsSortedByDate();
 		Map<String, List<PaymentTransaction>> paymentsAppliedToDeduction = new HashMap<>();
@@ -147,12 +154,16 @@ public class PaymentLogic {
 			userAccount.removePaymentTransactionsByPayerName(entry.getKey(), entry.getValue());
 		}
 		
-		// The last transaction is a partial transaction that could remove all in the account but likely will not
 		addPaymentTransactionToBeRemoved(lastTransaction, paymentsAppliedToDeduction);
 		
 		return createListForAppliedDeduction(paymentsAppliedToDeduction);
 	}
 	
+	/**
+	 * Add a payment transaction to be removed. Used in the apply deduction logic to keep track of which payments applied to the deduction.
+	 * @param transaction The transaction to remove.
+	 * @param paymentTransactionsToRemove a map which a key being the payer name and the value is a list of transactions to remove.
+	 */
 	private void addPaymentTransactionToBeRemoved(PaymentTransaction transaction, Map<String, List<PaymentTransaction>> paymentTransactionsToRemove) {
 		List<PaymentTransaction> transactions = paymentTransactionsToRemove.get(transaction.getPayerName());
 		if (CollectionUtils.isEmpty(transactions)) {
@@ -164,6 +175,13 @@ public class PaymentLogic {
 		}
 	}
 	
+	/**
+	 * Create a list based on payments that were applied during a deduction. A key/value data structure is used to record
+	 * all transactions that were applied for a particular payer. They are aggregated and a single transaction is made to
+	 * represent the total that was applied during the deduction.
+	 * @param paymentsRemoved the key/value data structure that contains the lists of payments to remove.
+	 * @return a single list of payers and amounts that were applied to a deduction.
+	 */
 	private List<PaymentTransaction> createListForAppliedDeduction(Map<String, List<PaymentTransaction>> paymentsRemoved) {
 		List<PaymentTransaction> paymentsApplied = new ArrayList<>();
 		for (Map.Entry<String, List<PaymentTransaction>> entry : paymentsRemoved.entrySet()) {
@@ -182,11 +200,21 @@ public class PaymentLogic {
 		return paymentsApplied;
 	}
 	
+	/**
+	 * Public method to get a user account. Throws an error if the user does not exist
+	 * @param userAccountName the user account to get
+	 * @return the user account to get.
+	 */
 	public UserAccount getFullUserAccount(String userAccountName) {
 		UserAccount userAccount = getValidUserAccount(userAccountName);
 		return userAccount;
 	}
 	
+	/**
+	 * Hidden method to actually get a user account for internal use. Throws an IllegalArgumentException if user does not exist.
+	 * @param userAccountName the user account to get.
+	 * @return the User account object.
+	 */
 	private UserAccount getValidUserAccount(String userAccountName) {
 		UserAccount userAccount = UserAccountDAO.getInstance().getUserAccountByName(userAccountName);
 		if (userAccount == null) {
