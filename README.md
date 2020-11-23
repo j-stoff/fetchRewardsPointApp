@@ -33,6 +33,15 @@ The Jersey version is 2.32, so it does not use the latest jakarta packages but r
 - **Form parameters used instead of JSON payloads.** This was done mostly for simplicity. I assume it is easier to test with Form parameters rather JSON payloads for most Web Service Testing tools; however, I know JSON can be mapped as the input data to a Web Service as well.
 - **Older framework.** I used the Jersey spec from 2017 as that is what I am most familiar with though it is an older technology. I did not use Spring Boot or any other frameworks to align with just a pure Java application and not rely on the magic that certain frameworks provide.
 
+### Examples
+
+Echo Example with Tomcat running on localhost.
+![Postman Echo Example with Tomcat Server](/images/Echo_test_with_postman.png)
+
+Check User Account status.
+![Postman Check Payments for User](/images/CheckUserAccount_with_postman.png)
+
+
 ### Other
 - Be sure to add a path for the log4j2.xml in order to get logging support. I typically just put this in my /target folder of a Maven project so I know it is local to the workspace.
 - I would test the /echo service to ensure the Server and Application start up was correct before attempting to use the services.
