@@ -39,7 +39,7 @@ Echo Example with Tomcat running on localhost.
 ![Postman Echo Example with Tomcat Server](/images/Echo_test_with_postman.png)
 
 Check User Account status.
-![Postman Check Payments for User](/images/CheckUserAccount_with_postman.png)
+![Postman Check Payments for User](/images/CheckUserAccount_with_postman.PNG)
 
 
 ### Other
